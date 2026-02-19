@@ -8,25 +8,45 @@ CORS(app)
 
 def analyze_market(ticker, interval):
     try:
-        yf_interval = interval
-        period = "5d"
+        # 1. SMART FETCHING LOGIC
+        # We must adjust the 'period' so we always have enough candles for the 50-EMA math.
+        # We also map intervals yfinance doesn't support to ones it does (to be resampled later).
+        if interval == "1m":
+            yf_interval, period = "1m", "5d"
+        elif interval == "3m":
+            yf_interval, period = "1m", "5d"   # Resampled later
+        elif interval == "5m":
+            yf_interval, period = "5m", "1mo"
+        elif interval == "10m":
+            yf_interval, period = "5m", "1mo"  # Resampled later
+        elif interval == "15m":
+            yf_interval, period = "15m", "1mo"
+        elif interval == "30m":
+            yf_interval, period = "30m", "1mo"
+        elif interval == "45m":
+            yf_interval, period = "15m", "1mo" # Resampled later
+        elif interval == "1h":
+            yf_interval, period = "1h", "3mo"  # Need 3 months to get enough 1h candles
+        else:
+            yf_interval, period = "1m", "5d"
 
-        # Handle YFinance limitations: it doesn't support 3m natively.
-        if interval == "3m":
-            yf_interval = "1m"
-
+        # Download the data
         df = yf.download(ticker, period=period, interval=yf_interval, progress=False)
         
         if df.empty:
             return None
 
-        # Clean up multi-index columns
+        # Clean up multi-index columns (common in new versions of yfinance)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # Custom Resampling for 3-minute data
-        if interval == "3m":
-            df = df.resample('3min').agg({
+        # 2. CUSTOM RESAMPLING
+        # Compress the data into perfect 3, 10, or 45-minute candles
+        if interval in ["3m", "10m", "45m"]:
+            # Match the exact string format Pandas needs (e.g., '3min')
+            pandas_interval = interval.replace('m', 'min') 
+            
+            df = df.resample(pandas_interval).agg({
                 'Open': 'first',
                 'High': 'max',
                 'Low': 'min',
@@ -75,7 +95,7 @@ def analyze_market(ticker, interval):
         up_score = max(5.0, min(95.0, up_score))
         down_score = 100.0 - up_score
 
-        # Determine Signal based on exact decimal (UPDATED TO BUY/SELL)
+        # Determine Signal based on exact decimal
         prediction = "BUY" if up_score > 50 else "SELL"
 
         return {
