@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Predictor</title>
+    <title>Market Predictor</title>
     <style>
         body { font-family: sans-serif; background-color: #222; color: white; text-align: center; padding: 40px; }
         .box { max-width: 500px; margin: 0 auto; background: #333; padding: 30px; border-radius: 10px; }
-        select { padding: 10px; font-size: 16px; margin-bottom: 20px; width: 80%; }
+        select { padding: 10px; font-size: 16px; margin-bottom: 20px; width: 80%; background: #444; color: white; border: 1px solid #555; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        button { padding: 15px; font-size: 16px; cursor: pointer; background: #444; color: white; border: none; border-radius: 5px; }
+        button { padding: 15px; font-size: 16px; cursor: pointer; background: #555; color: white; border: none; border-radius: 5px; transition: 0.2s; }
         button:hover { background: #007bff; }
         .result { display: none; margin-top: 20px; padding: 20px; border-radius: 5px; }
-        .green { background: #28a745; }
-        .red { background: #dc3545; }
+        .green { background: #28a745; } /* BUY Color */
+        .red { background: #dc3545; }   /* SELL Color */
     </style>
 </head>
 <body>
@@ -23,34 +23,56 @@
         
         <label>Choose Asset:</label><br>
         <select id="symbol">
-            <option value="EURUSD=X">EUR/USD</option>
-            <option value="GBPUSD=X">GBP/USD</option>
-            <option value="JPY=X">USD/JPY</option>
-            <option value="BTC-USD">Bitcoin</option>
-            <option value="GC=F">Gold</option>
+            <optgroup label="Forex">
+                <option value="EURUSD=X">EUR/USD</option>
+                <option value="GBPUSD=X">GBP/USD</option>
+                <option value="JPY=X">USD/JPY</option>
+                <option value="AUDUSD=X">AUD/USD</option>
+                <option value="USDCAD=X">USD/CAD</option>
+                <option value="USDCHF=X">USD/CHF</option>
+            </optgroup>
+            
+            <optgroup label="Cryptocurrency">
+                <option value="BTC-USD">Bitcoin (BTC)</option>
+                <option value="ETH-USD">Ethereum (ETH)</option>
+                <option value="SOL-USD">Solana (SOL)</option>
+                <option value="XRP-USD">Ripple (XRP)</option>
+            </optgroup>
+
+            <optgroup label="Commodities & Indices">
+                <option value="GC=F">Gold</option>
+                <option value="CL=F">Crude Oil</option>
+                <option value="^GSPC">S&P 500</option>
+                <option value="^IXIC">NASDAQ</option>
+            </optgroup>
+
+            <optgroup label="Stocks">
+                <option value="AAPL">Apple (AAPL)</option>
+                <option value="TSLA">Tesla (TSLA)</option>
+                <option value="NVDA">Nvidia (NVDA)</option>
+                <option value="MSFT">Microsoft (MSFT)</option>
+            </optgroup>
         </select>
 
         <p>Choose Timeframe to Analyze:</p>
         <div class="grid">
-            <!-- Passed specific intervals to the function -->
             <button onclick="getPrediction('1m')">30 Seconds (uses 1m)</button>
             <button onclick="getPrediction('1m')">1 Minute</button>
             <button onclick="getPrediction('3m')">3 Minutes</button>
             <button onclick="getPrediction('5m')">5 Minutes</button>
         </div>
 
-        <div id="loading" style="display:none;">Analyzing...</div>
+        <div id="loading" style="display:none; margin-top: 20px;">Analyzing Market Data...</div>
 
         <div id="result" class="result">
             <h1 id="direction"></h1>
             <h3 id="price"></h3>
-            <p>UP Chance: <span id="prob-up"></span></p>
-            <p>DOWN Chance: <span id="prob-down"></span></p>
+            <p>BUY Chance: <span id="prob-up"></span></p>
+            <p>SELL Chance: <span id="prob-down"></span></p>
         </div>
     </div>
 
     <script>
-        // Accept 'interval' as a parameter
         async function getPrediction(interval) {
             const symbol = document.getElementById('symbol').value;
             const resBox = document.getElementById('result');
@@ -60,20 +82,19 @@
             loader.style.display = 'block';
 
             try {
-                // Fetch from Python backend, now sending BOTH symbol and interval
                 const response = await fetch(`http://127.0.0.1:5000/predict?symbol=${symbol}&interval=${interval}`);
                 const data = await response.json();
 
                 loader.style.display = 'none';
                 resBox.style.display = 'block';
 
-                document.getElementById('price').innerText = "Price: " + data.current_price;
+                document.getElementById('price').innerText = "Current Price: " + data.current_price;
                 document.getElementById('direction').innerText = data.prediction + " (" + data.interval + ")";
                 document.getElementById('prob-up').innerText = data.up_probability;
                 document.getElementById('prob-down').innerText = data.down_probability;
 
-                // Set color
-                if(data.prediction.includes("UP")) {
+                // Set color (UPDATED TO LOOK FOR "BUY")
+                if(data.prediction.includes("BUY")) {
                     resBox.className = "result green";
                 } else {
                     resBox.className = "result red";
@@ -81,7 +102,7 @@
 
             } catch (error) {
                 loader.style.display = 'none';
-                alert("Make sure the Python Window is still open!");
+                alert("Make sure the Python Window is still open and running!");
             }
         }
     </script>
